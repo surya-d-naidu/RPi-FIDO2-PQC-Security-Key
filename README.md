@@ -2,6 +2,8 @@
 
 ## With support for Post Quantum Cryptography now
 
+This is FIPS-204 compliant. With specifications from the proposed/requested specs by IETF
+
 ## This project converts an RPi 5 or RPi Zero/ Zero 2 W to a FIDO2 Security Key
 
 ![Banner](image.png)
