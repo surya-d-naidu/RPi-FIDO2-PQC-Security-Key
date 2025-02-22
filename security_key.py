@@ -1,6 +1,21 @@
 #!/usr/bin/python3
 
 allow_prints=False
+allow_benchmarking=False  #Dont allow printing while benchmarking
+
+############################### Benchmarking #################################
+from datetime import datetime
+import json
+logtime = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+log_file_path=f'/etc/fido2_security_key/benchmark-{logtime}.json'
+
+logs=[]
+def add_to_log(data):
+    global logs
+    if allow_benchmarking:
+        logs.append(data)
+        with open(log_file_path,'w') as lfile:
+            json.dump(logs, lfile, indent=4)
 
 ############################### Key Management ################################
 import os
@@ -406,11 +421,12 @@ def CTAPHID_CBOR(channel, payload):
         reply=reply+cbor2.dumps(reply_payload)
         bcnt=len(reply)
         to_send=preprocess_send_data(channel, command, bcnt, reply)
-        send_data(to_send)
+        return (to_send)
     else:
         reply=success.to_bytes(1,'big')
         bcnt=len(reply)
         to_send=preprocess_send_data(channel, command, bcnt, reply)
+        return (to_send)
 
 
 def make_channel_id():
@@ -436,26 +452,26 @@ def CTAPHID_INIT(channel, payload):
     data=data+(13).to_bytes(1, 'big') 
 
     to_send=preprocess_send_data(channel, command, bcnt, data)
-    send_data(to_send)
+    return (to_send)
 
 def CTAPHID_PING(channel, payload):
     command=0x01
     bcnt=len(payload)
     to_send=preprocess_send_data(channel, command, bcnt, payload)
-    send_data(to_send)
+    return (to_send)
 
 def CTAPHID_CANCEL(channel, payload):
     command=0x11
     bcnt=0
     to_send=preprocess_send_data(channel, command, bcnt, b'')
-    send_data(to_send)
+    return (to_send)
 
 def CTAPHID_WINK(channel, payload):
     command=0x08
     bcnt=0
     print("Authenticator wink")
     to_send=preprocess_send_data(channel, command, bcnt, b'')
-    send_data(to_send)
+    return (to_send)
 
 def CTAPHID_ERROR(channel, error_code):
     command=0x3f
@@ -501,15 +517,15 @@ def stop_keepalive():
     
 def run_commands(channel, command, bcnt, payload):
     if command==0x06:
-        CTAPHID_INIT(channel, payload)
+        return CTAPHID_INIT(channel, payload)
     if command==0x01:
-        CTAPHID_PING(channel, payload)
+        return CTAPHID_PING(channel, payload)
     if command==0x11:
-        CTAPHID_CANCEL(channel, payload)
+        return CTAPHID_CANCEL(channel, payload)
     if command==0x08:
-        CTAPHID_WINK(channel, payload)
+        return CTAPHID_WINK(channel, payload)
     if command==0x10:
-        CTAPHID_CBOR(channel, payload)
+        return CTAPHID_CBOR(channel, payload)
 
 
 ########################################### Low Level Implementation #######################################
@@ -555,7 +571,7 @@ def process_packet(packet):
     try:
         process_transcation(channel)
     except:
-        CTAPHID_ERROR(channel)
+        CTAPHID_ERROR(channel, 0x7f)
 
 
 
@@ -632,6 +648,21 @@ def calc_num_packets(bcnt):
         bcnt=0
     return num_pack
 
+def result_payload(packets):
+    payload=packets[0][7:]
+    command=packets[0][4]& 0x7f
+    bcnt_bytes=packets[0][5:7]
+    bcnt=int.from_bytes(bcnt_bytes, 'big')
+    i=1
+    while i<len(packets):
+        payload=payload+packets[i][6:]
+        i=i+1
+    payload=payload[:bcnt]
+    return command, payload
+    
+
+
+
 def process_transcation(channel):
     cstr=channel.hex()
     data=full_data[cstr]
@@ -645,8 +676,29 @@ def process_transcation(channel):
     bcnt=data[1]
     payload=payload[:bcnt]
     command=int.from_bytes(data[0], 'big')
-    run_commands(channel, command, bcnt, payload)
 
+    start_time=time.perf_counter()
+    res=run_commands(channel, command, bcnt, payload)
+    end_time=time.perf_counter()
+    send_data(res)
+
+    if allow_benchmarking:
+        benchmark={}
+        benchmark['input']={}
+        benchmark['input']['command']=command.to_bytes(1,'big').hex()
+        benchmark['input']['payload']=payload.hex()
+        benchmark['output']={}
+        out_cmd, out_payload=result_payload(res)
+        benchmark['output']['command']=out_cmd.to_bytes(1,'big').hex()
+        benchmark['output']['payload']=out_payload.hex()
+        time_taken=end_time-start_time
+        time_taken=round(time_taken,6)
+        
+        benchmark['time']=time_taken
+        add_to_log(benchmark)
+
+        print(benchmark)
+    
 ####################GPIO Pins##################################
 import RPi.GPIO as GPIO
 
