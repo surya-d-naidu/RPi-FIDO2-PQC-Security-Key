@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-allow_prints=False
-allow_benchmarking=False  #Dont allow printing while benchmarking
+allow_prints=True
+allow_benchmarking=True  #Dont allow printing while benchmarking
 
 ############################### Benchmarking #################################
 from datetime import datetime
@@ -26,7 +26,7 @@ from hashlib import sha256
 file_path="/etc/fido2_security_key/keys.secret"
 
 current_keys={}
-
+algo=-7
 while True:
     print("Reading crypto file")
     try:
@@ -258,6 +258,7 @@ def authenticatorGetInfo():
     return authenticatorInfo, 0
 
 def authenticatorMakeCredential(payload):
+    global algo
     clientDataHash=payload[1]
     rp=payload[2]
     user=payload[3]
@@ -315,7 +316,7 @@ assertptr=0
 assertiontime=0
 
 def authenticatorGetAssertion(payload):
-    global signatures, assertiontime, assertptr
+    global signatures, assertiontime, assertptr, algo
     
     signatures=[]
     signkeys=[]
@@ -571,7 +572,7 @@ def process_packet(packet):
     try:
         process_transcation(channel)
     except:
-        CTAPHID_ERROR(channel, 0x7f)
+        CTAPHID_ERROR(channel)
 
 
 
@@ -649,6 +650,7 @@ def calc_num_packets(bcnt):
     return num_pack
 
 def result_payload(packets):
+    global algo
     payload=packets[0][7:]
     command=packets[0][4]& 0x7f
     bcnt_bytes=packets[0][5:7]
@@ -658,7 +660,7 @@ def result_payload(packets):
         payload=payload+packets[i][6:]
         i=i+1
     payload=payload[:bcnt]
-    return command, payload
+    return command, payload, algo
     
 
 
@@ -688,9 +690,10 @@ def process_transcation(channel):
         benchmark['input']['command']=command.to_bytes(1,'big').hex()
         benchmark['input']['payload']=payload.hex()
         benchmark['output']={}
-        out_cmd, out_payload=result_payload(res)
+        out_cmd, out_payload, last_algo=result_payload(res)
         benchmark['output']['command']=out_cmd.to_bytes(1,'big').hex()
         benchmark['output']['payload']=out_payload.hex()
+        benchmark['last_algo']=last_algo
         time_taken=end_time-start_time
         time_taken=round(time_taken,6)
         
