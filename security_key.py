@@ -700,7 +700,6 @@ def process_transcation(channel):
         benchmark['time']=time_taken
         add_to_log(benchmark)
 
-        print(benchmark)
     
 ####################GPIO Pins##################################
 import RPi.GPIO as GPIO
