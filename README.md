@@ -63,6 +63,6 @@ The RPi will now behave like a security key. Connect the RPi to the PC via the U
 The device ideally draws around 4w (5v, 800 mA). Normal laptops or phones (without Thunderbolt) may not be able to provide this amount. Hence, it is recommended to power the device via GPIO pins or POE if you notice the device being unable to boot up or frequently shutting down.
 
 ## Video Demo
-https://youtu.be/K7gz3Q2Wtug
+https://youtu.be/qAKDtAn4LVg?si=P9v7KEMAkNYpWoLS
 
 [![Video](https://img.youtube.com/vi/K7gz3Q2Wtug/0.jpg)](https://www.youtube.com/watch?v=K7gz3Q2Wtug)
