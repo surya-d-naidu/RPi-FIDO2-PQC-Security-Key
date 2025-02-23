@@ -65,4 +65,4 @@ The device ideally draws around 4w (5v, 800 mA). Normal laptops or phones (witho
 ## Video Demo
 https://youtu.be/qAKDtAn4LVg?si=P9v7KEMAkNYpWoLS
 
-[![Video](https://img.youtube.com/vi/K7gz3Q2Wtug/0.jpg)](https://www.youtube.com/watch?v=K7gz3Q2Wtug)
+
