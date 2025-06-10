@@ -604,6 +604,8 @@ def process_packet(packet):
         show(seq, "SEQ")
         seqnum=packet[4]
         payload=packet[5:]
+        if cstr not in full_data:
+            return
     
     seqnum=seqnum+3
     try:
