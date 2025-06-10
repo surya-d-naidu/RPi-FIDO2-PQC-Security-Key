@@ -576,6 +576,7 @@ def fix_packet(packet):
     return packet.ljust(64, b'\x00')
 
 def process_packet(packet):
+    userinthr.clear()
     channel=packet[0:4]
     if channel.hex()=='00000000':
         packet=fix_packet(packet)
