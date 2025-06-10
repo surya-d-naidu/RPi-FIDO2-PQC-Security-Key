@@ -478,7 +478,7 @@ def CTAPHID_WINK(channel, payload):
     to_send=preprocess_send_data(channel, command, bcnt, b'')
     return (to_send)
 
-def CTAPHID_ERROR(channel, error_code):
+def CTAPHID_ERROR(channel, error_code=0x7f):
     command=0x3f
     bcnt=1
     data=(error_code).to_bytes(1, 'big')
@@ -513,7 +513,7 @@ def start_keepalive(channel, payload, code=1):
     global task_thread, stop_event, last_keepalive
     last_keepalive=get_time_ms()
     if task_thread and task_thread.is_alive():
-        return
+        stop_keepalive()
     stop_event.clear()
     task_thread = threading.Thread(target=send_keepalive, args=(channel, payload, code))
     task_thread.start()
@@ -541,6 +541,7 @@ userinthr=threading.Event()
 
 def wait_up():
     try:
+        print("Waiting for user input")
         while userinthr.is_set():
             if read_gpio():
                 userin.set()
@@ -746,7 +747,7 @@ led=16
 GPIO.cleanup()
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(led, GPIO.OUT)
-inputpin=18
+inputpin=26
 GPIO.setup(inputpin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def read_gpio():
