@@ -632,11 +632,11 @@ def process_packet(packet):
         full_data[cstr][seqnum]=payload
     except:
         pass
-    try:
+    if True:
         
         process_transcation(channel)
-    except:
-        CTAPHID_ERROR(channel)
+    #except:
+    #    CTAPHID_ERROR(channel)
 
 
 
