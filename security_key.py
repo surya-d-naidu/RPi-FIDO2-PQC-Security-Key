@@ -283,7 +283,7 @@ def authenticatorMakeCredential(payload):
     cred_id, pvtkey, pubkey=gen_keys(rpid, userid, user, algo)
     
     flags=(0x45).to_bytes(1,'big')
-    signCount=(4).to_bytes(4,'big')
+    signCount=(0).to_bytes(4,'big')
 
     aaguid=uuid.UUID(aaguid_str).bytes
     credentialIdLength=(len(cred_id)).to_bytes(2, 'big')
@@ -300,8 +300,7 @@ def authenticatorMakeCredential(payload):
     attstmt={}
     attstmt['alg']=algo
     attstmt['sig']=sign_challenge(pvtkey, tosign, algo)
-    #attstmt['x5c']=[gen_certificate_ecdsa(pvtkey)]
-
+    
     attestationobj={}
     attestationobj[1]=fmt
     attestationobj[2]=authData
@@ -330,7 +329,7 @@ def authenticatorGetAssertion(payload):
 
     rpidhash=hash_data(rpid.encode())
     flags=(0x5).to_bytes(1, 'big')
-    signCount=(4).to_bytes(4,'big')
+    signCount=(0).to_bytes(4,'big')
 
     authdata=rpidhash+flags+signCount
     tosign=authdata+clientDataHash
