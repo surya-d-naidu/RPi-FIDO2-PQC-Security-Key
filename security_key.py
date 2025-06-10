@@ -2,7 +2,7 @@
 
 allow_prints=True
 allow_benchmarking=True  #Dont allow printing while benchmarking
-debug_mode=False
+debug_mode=True
 
 ############################### Benchmarking #################################
 from datetime import datetime
@@ -402,7 +402,7 @@ def authenticatorReset():
 full_data={}
 
 def CTAPHID_CBOR(channel, payload):
-    start_keepalive(channel, b'')
+    start_keepalive(channel)
     command=0x10
     cbor_command=payload[0]
     cbor_command_bytes=payload[0:1]
@@ -500,22 +500,22 @@ stop_event = threading.Event()
 last_keepalive=0
 
 import time
-def send_keepalive(channel, payload, code):
+def send_keepalive(channel, payload):
     global task_thread, stop_event, last_keepalive
     while not stop_event.is_set():
         curr=get_time_ms()
-        if last_keepalive-curr>=100:
-            CTAPHID_KEEPALIVE(channel, payload, code)
+        if curr-last_keepalive>=100:
+            CTAPHID_KEEPALIVE(channel, payload)
             last_keepalive=get_time_ms()
         time.sleep(0.01)
         
-def start_keepalive(channel, payload, code=1):
+def start_keepalive(channel, payload=1):
     global task_thread, stop_event, last_keepalive
     last_keepalive=get_time_ms()
     if task_thread and task_thread.is_alive():
         stop_keepalive()
     stop_event.clear()
-    task_thread = threading.Thread(target=send_keepalive, args=(channel, payload, code))
+    task_thread = threading.Thread(target=send_keepalive, args=(channel, payload))
     task_thread.start()
 
 def stop_keepalive():
@@ -556,7 +556,7 @@ def wait_user_input(channel):
         return True
     userin.clear()
     userinthr.set()
-    start_keepalive(channel, b'', code=2)
+    start_keepalive(channel, 2)
     userthread=threading.Thread(target=wait_up, daemon=True)
     userthread.start()
     userthread.join()
