@@ -613,7 +613,8 @@ def process_packet(packet):
     except:
         pass
     try:
-        process_transcation(channel)
+        threading.Thread(target=process_transcation, args=(channel,)).start()
+        #process_transcation(channel)
     except:
         CTAPHID_ERROR(channel)
 
