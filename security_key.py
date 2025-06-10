@@ -669,7 +669,7 @@ def preprocess_send_data(channel, command, bcnt, payload):
         packet_list[last_pack]=packet_list[last_pack]+b'\x00'*pad
 
     full_packets=[None]*num_pack
-    if channel.is_integer:
+    if isinstance(channel, int):
         channel=channel.to_bytes(4, 'big')
     first_packet=channel
     first_packet=first_packet+(command | 0x80).to_bytes(1, 'big')
