@@ -423,7 +423,7 @@ def CTAPHID_CBOR(channel, payload):
     process_resp(channel, reply_payload, success)
 
 
-def process_resp(channel, reply_payload, success):
+def process_resp(channel, reply_payload, success, command=0x10):
     if success==0:
         reply=(0).to_bytes(1,'big')
         reply=reply+cbor2.dumps(reply_payload, canonical=True)
