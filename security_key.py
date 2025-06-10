@@ -308,7 +308,7 @@ def authenticatorMakeCredential(channel, payload):
     
     attestationobj[3]=attstmt
 
-    process_resp(channel, attestationobj, 0)
+    return attestationobj, 0
 
 signatures=[]
 
@@ -377,7 +377,7 @@ def authenticatorGetAssertion(channel, payload):
     assertiontime=int(time.time())
     assertptr=1
     wait_user_input(channel)
-    process_resp(channel, signatures[0],0)
+    return signatures[0],0
 
 def authenticatorGetNextAssertion():
     global signatures, assertiontime, assertptr
@@ -412,26 +412,14 @@ def CTAPHID_CBOR(channel, payload):
     if cbor_command==0x04:
         reply_payload, success=authenticatorGetInfo()
     if cbor_command==0x01:
-        threading.Thread(target=authenticatorMakeCredential, args=(channel, cbor2.loads(cbor_payload),)).start()
+        reply_payload, success=authenticatorMakeCredential(channel, cbor2.loads(cbor_payload))
     if cbor_command==0x02:
-        threading.Thread(target=authenticatorGetAssertion, args=(channel, cbor2.loads(cbor_payload),)).start()
+        reply_payload, success=authenticatorGetAssertion(channel, cbor2.loads(cbor_payload))
     if cbor_command==0x08:
         reply_payload, success=authenticatorGetNextAssertion()
     if cbor_command==0x07:
         reply_payload, success=authenticatorReset()
-    if success==0:
-        reply=(0).to_bytes(1,'big')
-        reply=reply+cbor2.dumps(reply_payload, canonical=True)
-        bcnt=len(reply)
-        to_send=preprocess_send_data(channel, command, bcnt, reply)
-        return (to_send)
-    else:
-        reply=success.to_bytes(1,'big')
-        bcnt=len(reply)
-        to_send=preprocess_send_data(channel, command, bcnt, reply)
-        return (to_send)
 
-def process_resp(channel, reply_payload, success, command=0x10):
     if success==0:
         reply=(0).to_bytes(1,'big')
         reply=reply+cbor2.dumps(reply_payload, canonical=True)
@@ -450,14 +438,9 @@ def make_channel_id():
     value=random.randint(1, 0xfffffffe)
     return value.to_bytes(4, 'big')
 
-broadcastchannel=0xffffffff.to_bytes(4,'big')
-channellist=[broadcastchannel]
-
 def CTAPHID_INIT(channel, payload):
-    global channellist
     if channel==0xffffffff:
         channel_new=make_channel_id()
-        channellist.append(channel_new)
     else:
         channel_new=channel
         if channel in full_data:
@@ -551,24 +534,20 @@ def run_commands(channel, command, bcnt, payload):
         return CTAPHID_WINK(channel, payload)
     if command==0x10:
         return CTAPHID_CBOR(channel, payload)
-    return CTAPHID_ERROR(channel, 0x01)
 
 userin=threading.Event()
 userinthr=threading.Event()
-data_avail=threading.Event()
 
 def wait_up(channel):
-    dummy=1
     try:
         print("Waiting for user input")
-        while userinthr.is_set() and not data_avail.is_set():
+        while userinthr.is_set():
             CTAPHID_KEEPALIVE(channel,2)
             if read_gpio():
                 userin.set()
                 userinthr.clear()
                 break
             time.sleep(0.01)
-            
     except:
         pass
 
@@ -576,7 +555,6 @@ def wait_user_input(channel):
     global userthread
     if not debug_mode:
         return True
-    data_avail.clear()
     userin.clear()
     userinthr.set()
     stop_keepalive()
@@ -598,8 +576,6 @@ def fix_packet(packet):
     return packet.ljust(64, b'\x00')
 
 def process_packet(packet):
-    global channellist
-    userinthr.clear()
     channel=packet[0:4]
     if channel.hex()=='00000000':
         packet=fix_packet(packet)
@@ -607,8 +583,6 @@ def process_packet(packet):
         return
     cstr=channel.hex()
     show(channel, 'channel')
-    if channel not in channellist:
-        CTAPHID_ERROR(0xffffffff, 0x0b)
     byte4=packet[4]
     if byte4>0x7f:
         command=packet[4] & 0x7f
@@ -629,21 +603,16 @@ def process_packet(packet):
         show(seq, "SEQ")
         seqnum=packet[4]
         payload=packet[5:]
-        if cstr not in full_data:
-            return
     
     seqnum=seqnum+3
     try:
-        if seqnum>2 and seqnum-1 not in full_data[cstr]:
-            CTAPHID_CBOR(channel, 0x04)
-            return
         full_data[cstr][seqnum]=payload
     except:
         pass
-    try:    
+    try:
         process_transcation(channel)
     except:
-        CTAPHID_ERROR(channel, 0x04)
+        CTAPHID_ERROR(channel)
 
 
 
@@ -683,8 +652,6 @@ def preprocess_send_data(channel, command, bcnt, payload):
         packet_list[last_pack]=packet_list[last_pack]+b'\x00'*pad
 
     full_packets=[None]*num_pack
-    if isinstance(channel, int):
-        channel=channel.to_bytes(4, 'big')
     first_packet=channel
     first_packet=first_packet+(command | 0x80).to_bytes(1, 'big')
     first_packet=first_packet+bcnt.to_bytes(2, 'big')
@@ -702,8 +669,6 @@ def preprocess_send_data(channel, command, bcnt, payload):
 def send_data(preprocessed_data):
     indicator_on()
     stop_keepalive()
-    if preprocessed_data is None:
-        preprocessed_data=b''
     for x in preprocessed_data:
         show(x, "Sending packet")
         port.write(x)
@@ -820,6 +785,6 @@ if __name__=='__main__':
         packet=port.read(64)
         if packet==None:
             continue
-        data_avail.set()
         show(packet, 'Full packet')
         process_packet(packet)
+
