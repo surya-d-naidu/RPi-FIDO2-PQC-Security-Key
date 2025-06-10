@@ -438,7 +438,8 @@ def make_channel_id():
     value=random.randint(1, 0xfffffffe)
     return value.to_bytes(4, 'big')
 
-channellist=[]
+broadcastchannel=0xffffffff.to_bytes(4,'big')
+channellist=[broadcastchannel]
 
 def CTAPHID_INIT(channel, payload):
     global channellist
