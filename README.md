@@ -34,7 +34,7 @@ git clone <Repository URL>
 ```
 
 ```
-git clone https://github.com/AdityaMitra5102/RPi-FIDO2-Security-Key.git
+git clone https://github.com/AdityaMitra5102/RPi-FIDO2-PQC-Security-Key.git
 ```
 
 4. Go into the folder
