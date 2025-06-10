@@ -512,8 +512,8 @@ def send_keepalive(channel, payload):
 def start_keepalive(channel, payload=1):
     global task_thread, stop_event, last_keepalive
     last_keepalive=get_time_ms()
-    if task_thread and task_thread.is_alive():
-        stop_keepalive()
+    
+    stop_keepalive()
     stop_event.clear()
     task_thread = threading.Thread(target=send_keepalive, args=(channel, payload))
     task_thread.start()
