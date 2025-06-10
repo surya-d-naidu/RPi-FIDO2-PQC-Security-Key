@@ -308,7 +308,7 @@ def authenticatorMakeCredential(channel, payload):
     
     attestationobj[3]=attstmt
 
-    return attestationobj, 0
+    process_resp(channel, attestationobj, 0)
 
 signatures=[]
 
@@ -377,7 +377,7 @@ def authenticatorGetAssertion(channel, payload):
     assertiontime=int(time.time())
     assertptr=1
     wait_user_input(channel)
-    return signatures[0],0
+    process_resp(channel, signatures[0],0)
 
 def authenticatorGetNextAssertion():
     global signatures, assertiontime, assertptr
@@ -412,14 +412,18 @@ def CTAPHID_CBOR(channel, payload):
     if cbor_command==0x04:
         reply_payload, success=authenticatorGetInfo()
     if cbor_command==0x01:
-        reply_payload, success=authenticatorMakeCredential(channel, cbor2.loads(cbor_payload))
+        threading.Thread(target=authenticatorMakeCredential, args=(channel, cbor2.loads(cbor_payload),)).start()
     if cbor_command==0x02:
-        reply_payload, success=authenticatorGetAssertion(channel, cbor2.loads(cbor_payload))
+        threading.Thread(target=authenticatorGetAssertion, args=(channel, cbor2.loads(cbor_payload),)).start()
     if cbor_command==0x08:
         reply_payload, success=authenticatorGetNextAssertion()
     if cbor_command==0x07:
         reply_payload, success=authenticatorReset()
 
+    process_resp(channel, reply_payload, success)
+
+
+def process_resp(channel, reply_payload, success)
     if success==0:
         reply=(0).to_bytes(1,'big')
         reply=reply+cbor2.dumps(reply_payload, canonical=True)
@@ -627,7 +631,7 @@ def process_packet(packet):
     except:
         pass
     try:
-        #threading.Thread(target=process_transcation, args=(channel,)).start()
+        
         process_transcation(channel)
     except:
         CTAPHID_ERROR(channel)
@@ -806,5 +810,4 @@ if __name__=='__main__':
         if packet==None:
             continue
         show(packet, 'Full packet')
-        threading.Thread(target=process_packet, args=(packet,), daemon=True).start()
-        #process_packet(packet)
+        process_packet(packet)
