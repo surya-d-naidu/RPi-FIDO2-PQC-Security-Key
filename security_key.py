@@ -2,6 +2,7 @@
 
 allow_prints=True
 allow_benchmarking=True  #Dont allow printing while benchmarking
+debug_mode=True
 
 ############################### Benchmarking #################################
 from datetime import datetime
@@ -400,6 +401,7 @@ def authenticatorReset():
 full_data={}
 
 def CTAPHID_CBOR(channel, payload):
+    start_keepalive()
     command=0x10
     cbor_command=payload[0]
     cbor_command_bytes=payload[0:1]
@@ -488,22 +490,26 @@ def CTAPHID_KEEPALIVE(channel, status):
     to_send=preprocess_send_data(channel, command, bcnt, data)
     send_data(to_send)
 
+
 import threading
 
 task_thread = None
 stop_event = threading.Event()
+last_keepalive=0
 
 import time
 def send_keepalive(channel, payload):
-    global task_thread, stop_event
+    global task_thread, stop_event, last_keepalive
     while not stop_event.is_set():
-        time.sleep(0.08)
-        CTAPHID_KEEPALIVE(channel, payload)
+        curr=get_time_ms()
+        if last_keepalive-curr>=100:
+            CTAPHID_KEEPALIVE(channel, payload)
+            last_keepalive=get_time_ms()
+        time.sleep(0.01)
         
-
-
 def start_keepalive(channel, payload):
-    global task_thread, stop_event
+    global task_thread, stop_event, last_keepalive
+    last_keepalive=get_time_ms()
     if task_thread and task_thread.is_alive():
         return
     stop_event.clear()
@@ -530,6 +536,9 @@ def run_commands(channel, command, bcnt, payload):
 
 
 ########################################### Low Level Implementation #######################################
+
+def get_time_ms():
+    return round(time.time()*1000)
 
 def fix_packet(packet):
     packet = packet.lstrip(b'\x00')
@@ -628,10 +637,11 @@ def preprocess_send_data(channel, command, bcnt, payload):
 
 def send_data(preprocessed_data):
     indicator_on()
+    stop_keepalive()
     for x in preprocessed_data:
         show(x, "Sending packet")
         port.write(x)
-        time.sleep(0.001)
+        #time.sleep(0.001)
     indicator_off()
 
 
