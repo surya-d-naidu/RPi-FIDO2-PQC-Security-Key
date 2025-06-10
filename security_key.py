@@ -534,6 +534,7 @@ def run_commands(channel, command, bcnt, payload):
         return CTAPHID_WINK(channel, payload)
     if command==0x10:
         return CTAPHID_CBOR(channel, payload)
+    return CTAPHID_ERROR(channel, 0x01)
 
 userin=threading.Event()
 userinthr=threading.Event()
