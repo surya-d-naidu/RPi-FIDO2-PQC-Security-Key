@@ -522,7 +522,6 @@ def stop_keepalive():
     global task_thread, stop_event
     if task_thread and task_thread.is_alive():
         stop_event.set()
-        task_thread.join()
     
 def run_commands(channel, command, bcnt, payload):
     if command==0x06:
