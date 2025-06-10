@@ -423,7 +423,7 @@ def CTAPHID_CBOR(channel, payload):
     process_resp(channel, reply_payload, success)
 
 
-def process_resp(channel, reply_payload, success)
+def process_resp(channel, reply_payload, success):
     if success==0:
         reply=(0).to_bytes(1,'big')
         reply=reply+cbor2.dumps(reply_payload, canonical=True)
@@ -547,19 +547,20 @@ def run_commands(channel, command, bcnt, payload):
 
 userin=threading.Event()
 userinthr=threading.Event()
+data_avail=threading.Event()
 
 def wait_up(channel):
     dummy=1
     try:
         print("Waiting for user input")
-        while userinthr.is_set() and dummy < 50:
+        while userinthr.is_set() and not data_avail.is_set():
             CTAPHID_KEEPALIVE(channel,2)
             if read_gpio():
                 userin.set()
                 userinthr.clear()
                 break
             time.sleep(0.01)
-            dummy=dummy+1
+            
     except:
         pass
 
@@ -567,6 +568,7 @@ def wait_user_input(channel):
     global userthread
     if not debug_mode:
         return True
+    data_avail.clear()
     userin.clear()
     userinthr.set()
     stop_keepalive()
@@ -809,5 +811,6 @@ if __name__=='__main__':
         packet=port.read(64)
         if packet==None:
             continue
+        data_avail.set()
         show(packet, 'Full packet')
         process_packet(packet)
