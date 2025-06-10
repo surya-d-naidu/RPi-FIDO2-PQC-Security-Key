@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 allow_prints=True
-allow_benchmarking=True  #Dont allow printing while benchmarking
-debug_mode=True
+allow_benchmarking=False  #Dont allow printing while benchmarking
+debug_mode=False #Use button
 
 ############################### Benchmarking #################################
 from datetime import datetime
