@@ -485,10 +485,10 @@ def CTAPHID_ERROR(channel, error_code=0x7f):
     to_send=preprocess_send_data(channel, command, bcnt, data)
     send_data(to_send)
 
-def CTAPHID_KEEPALIVE(channel, status, code=1):
+def CTAPHID_KEEPALIVE(channel, status=1):
     command=0x3b
     bcnt=1
-    data=status.to_bytes(code, 'big')
+    data=status.to_bytes(1, 'big')
     to_send=preprocess_send_data(channel, command, bcnt, data)
     send_data(to_send)
 
@@ -538,14 +538,16 @@ def run_commands(channel, command, bcnt, payload):
 userin=threading.Event()
 userinthr=threading.Event()
 
-def wait_up():
+def wait_up(channel):
     try:
         print("Waiting for user input")
         while userinthr.is_set():
+            CTAPHID_KEEPALIVE(channel,2)
             if read_gpio():
                 userin.set()
                 userinthr.clear()
                 break
+            time.sleep(0.01)
     except:
         pass
 
@@ -555,8 +557,8 @@ def wait_user_input(channel):
         return True
     userin.clear()
     userinthr.set()
-    start_keepalive(channel, 2)
-    userthread=threading.Thread(target=wait_up, daemon=True)
+    stop_keepalive()
+    userthread=threading.Thread(target=wait_up, args=(channel,))
     userthread.start()
     userthread.join()
     stop_keepalive()
