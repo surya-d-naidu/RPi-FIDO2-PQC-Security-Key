@@ -544,15 +544,17 @@ userin=threading.Event()
 userinthr=threading.Event()
 
 def wait_up(channel):
+    dummy=1
     try:
         print("Waiting for user input")
-        while userinthr.is_set():
+        while userinthr.is_set() and dummy < 50:
             CTAPHID_KEEPALIVE(channel,2)
             if read_gpio():
                 userin.set()
                 userinthr.clear()
                 break
             time.sleep(0.01)
+            dummy=dummy+1
     except:
         pass
 
