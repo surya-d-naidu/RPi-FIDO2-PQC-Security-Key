@@ -396,7 +396,7 @@ import os
 def authenticatorReset():
     os.remove(file_path)
     full_data={}
-    return '',0
+    return b'',0
 
 ############################## CTAP2 #########################################
 full_data={}
@@ -695,6 +695,8 @@ def preprocess_send_data(channel, command, bcnt, payload):
 def send_data(preprocessed_data):
     indicator_on()
     stop_keepalive()
+    if preprocessed_data is None:
+        preprocessed_data=b''
     for x in preprocessed_data:
         show(x, "Sending packet")
         port.write(x)
