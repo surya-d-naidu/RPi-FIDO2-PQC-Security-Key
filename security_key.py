@@ -806,4 +806,5 @@ if __name__=='__main__':
         if packet==None:
             continue
         show(packet, 'Full packet')
-        process_packet(packet)
+        threading.Thread(target=process_packet, args=(packet,), daemon=True).start()
+        #process_packet(packet)
