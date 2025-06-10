@@ -438,9 +438,13 @@ def make_channel_id():
     value=random.randint(1, 0xfffffffe)
     return value.to_bytes(4, 'big')
 
+channellist=[]
+
 def CTAPHID_INIT(channel, payload):
+    global channellist
     if channel==0xffffffff:
         channel_new=make_channel_id()
+        channellist.append(channel_new)
     else:
         channel_new=channel
         if channel in full_data:
@@ -577,6 +581,7 @@ def fix_packet(packet):
     return packet.ljust(64, b'\x00')
 
 def process_packet(packet):
+    global channellist
     userinthr.clear()
     channel=packet[0:4]
     if channel.hex()=='00000000':
@@ -585,6 +590,8 @@ def process_packet(packet):
         return
     cstr=channel.hex()
     show(channel, 'channel')
+    if channel not in channellist:
+        CTAPHID_ERROR(0xffffffff, 0x0b)
     byte4=packet[4]
     if byte4>0x7f:
         command=packet[4] & 0x7f
@@ -610,6 +617,9 @@ def process_packet(packet):
     
     seqnum=seqnum+3
     try:
+        if seqnum>2 and seqnum-1 not in full_data[cstr]:
+            CTAPHID_CBOR(channel, 0x04)
+            return
         full_data[cstr][seqnum]=payload
     except:
         pass
