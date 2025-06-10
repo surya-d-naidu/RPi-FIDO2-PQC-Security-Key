@@ -258,8 +258,9 @@ def authenticatorGetInfo():
     authenticatorInfo[10]=[{'alg': -7, 'type': 'public-key'},{'alg': -48, 'type': 'public-key'},{'alg': -49, 'type': 'public-key'}]
     return authenticatorInfo, 0
 
-def authenticatorMakeCredential(payload):
+def authenticatorMakeCredential(channel, payload):
     global algo
+    wait_user_input(channel)
     clientDataHash=payload[1]
     rp=payload[2]
     user=payload[3]
@@ -315,7 +316,7 @@ signatures=[]
 assertptr=0
 assertiontime=0
 
-def authenticatorGetAssertion(payload):
+def authenticatorGetAssertion(channel, payload):
     global signatures, assertiontime, assertptr, algo
     
     signatures=[]
@@ -375,6 +376,7 @@ def authenticatorGetAssertion(payload):
 
     assertiontime=int(time.time())
     assertptr=1
+    wait_user_input(channel)
     return signatures[0],0
 
 def authenticatorGetNextAssertion():
@@ -410,9 +412,9 @@ def CTAPHID_CBOR(channel, payload):
     if cbor_command==0x04:
         reply_payload, success=authenticatorGetInfo()
     if cbor_command==0x01:
-        reply_payload, success=authenticatorMakeCredential(cbor2.loads(cbor_payload))
+        reply_payload, success=authenticatorMakeCredential(channel, cbor2.loads(cbor_payload))
     if cbor_command==0x02:
-        reply_payload, success=authenticatorGetAssertion(cbor2.loads(cbor_payload))
+        reply_payload, success=authenticatorGetAssertion(channel, cbor2.loads(cbor_payload))
     if cbor_command==0x08:
         reply_payload, success=authenticatorGetNextAssertion()
     if cbor_command==0x07:
@@ -465,6 +467,7 @@ def CTAPHID_PING(channel, payload):
 def CTAPHID_CANCEL(channel, payload):
     command=0x11
     bcnt=0
+    userinthr.clear()
     to_send=preprocess_send_data(channel, command, bcnt, b'')
     return (to_send)
 
@@ -534,22 +537,30 @@ def run_commands(channel, command, bcnt, payload):
         return CTAPHID_CBOR(channel, payload)
 
 userin=threading.Event()
+userinthr=threading.Event()
 
 def wait_up():
     try:
-        input("Press enter")
-        userin.set()
+        while userinthr.is_set():
+            if read_gpio():
+                userin.set()
+                userinthr.clear()
+                break
     except:
         pass
 
 def wait_user_input(channel):
+    global userthread
     if not debug_mode:
         return True
     userin.clear()
+    userinthr.set()
     start_keepalive(channel, b'', code=2)
     userthread=threading.Thread(target=wait_up, daemon=True)
     userthread.start()
     userthread.join()
+    stop_keepalive()
+    userinthr.clear()
     return userin.is_set()
 
 
@@ -659,7 +670,6 @@ def send_data(preprocessed_data):
     for x in preprocessed_data:
         show(x, "Sending packet")
         port.write(x)
-        #time.sleep(0.001)
     indicator_off()
 
 
@@ -733,8 +743,14 @@ def process_transcation(channel):
 import RPi.GPIO as GPIO
 
 led=16
+GPIO.cleanup()
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(led, GPIO.OUT)
+inputpin=18
+GPIO.setup(inputpin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+def read_gpio():
+    return GPIO.input(inputpin)==GPIO.LOW
 
 def indicator_on():
     GPIO.output(led, GPIO.HIGH)
