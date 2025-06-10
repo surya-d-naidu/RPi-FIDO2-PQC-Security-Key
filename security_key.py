@@ -396,7 +396,7 @@ import os
 def authenticatorReset():
     os.remove(file_path)
     full_data={}
-    return b'',0
+    return '',0
 
 ############################## CTAP2 #########################################
 full_data={}
@@ -419,9 +419,17 @@ def CTAPHID_CBOR(channel, payload):
         reply_payload, success=authenticatorGetNextAssertion()
     if cbor_command==0x07:
         reply_payload, success=authenticatorReset()
-
-    process_resp(channel, reply_payload, success)
-
+    if success==0:
+        reply=(0).to_bytes(1,'big')
+        reply=reply+cbor2.dumps(reply_payload, canonical=True)
+        bcnt=len(reply)
+        to_send=preprocess_send_data(channel, command, bcnt, reply)
+        return (to_send)
+    else:
+        reply=success.to_bytes(1,'big')
+        bcnt=len(reply)
+        to_send=preprocess_send_data(channel, command, bcnt, reply)
+        return (to_send)
 
 def process_resp(channel, reply_payload, success, command=0x10):
     if success==0:
