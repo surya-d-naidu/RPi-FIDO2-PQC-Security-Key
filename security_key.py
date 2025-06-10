@@ -2,7 +2,7 @@
 
 allow_prints=True
 allow_benchmarking=True  #Dont allow printing while benchmarking
-debug_mode=True
+debug_mode=False
 
 ############################### Benchmarking #################################
 from datetime import datetime
@@ -400,7 +400,7 @@ def authenticatorReset():
 full_data={}
 
 def CTAPHID_CBOR(channel, payload):
-    start_keepalive()
+    start_keepalive(channel, b'')
     command=0x10
     cbor_command=payload[0]
     cbor_command_bytes=payload[0:1]
@@ -482,10 +482,10 @@ def CTAPHID_ERROR(channel, error_code):
     to_send=preprocess_send_data(channel, command, bcnt, data)
     send_data(to_send)
 
-def CTAPHID_KEEPALIVE(channel, status):
+def CTAPHID_KEEPALIVE(channel, status, code=1):
     command=0x3b
     bcnt=1
-    data=status.to_bytes(1, 'big')
+    data=status.to_bytes(code, 'big')
     to_send=preprocess_send_data(channel, command, bcnt, data)
     send_data(to_send)
 
@@ -497,22 +497,22 @@ stop_event = threading.Event()
 last_keepalive=0
 
 import time
-def send_keepalive(channel, payload):
+def send_keepalive(channel, payload, code):
     global task_thread, stop_event, last_keepalive
     while not stop_event.is_set():
         curr=get_time_ms()
         if last_keepalive-curr>=100:
-            CTAPHID_KEEPALIVE(channel, payload)
+            CTAPHID_KEEPALIVE(channel, payload, code)
             last_keepalive=get_time_ms()
         time.sleep(0.01)
         
-def start_keepalive(channel, payload):
+def start_keepalive(channel, payload, code=1):
     global task_thread, stop_event, last_keepalive
     last_keepalive=get_time_ms()
     if task_thread and task_thread.is_alive():
         return
     stop_event.clear()
-    task_thread = threading.Thread(target=send_keepalive, args=(channel, payload))
+    task_thread = threading.Thread(target=send_keepalive, args=(channel, payload, code))
     task_thread.start()
 
 def stop_keepalive():
@@ -532,6 +532,25 @@ def run_commands(channel, command, bcnt, payload):
         return CTAPHID_WINK(channel, payload)
     if command==0x10:
         return CTAPHID_CBOR(channel, payload)
+
+userin=threading.Event()
+
+def wait_up():
+    try:
+        input("Press enter")
+        userin.set()
+    except:
+        pass
+
+def wait_user_input(channel):
+    if not debug_mode:
+        return True
+    userin.clear()
+    start_keepalive(channel, b'', code=2)
+    userthread=threading.Thread(target=wait_up, daemon=True)
+    userthread.start()
+    userthread.join()
+    return userin.is_set()
 
 
 ########################################### Low Level Implementation #######################################
