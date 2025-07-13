@@ -10,7 +10,11 @@ This is FIPS-204 compliant. With specifications from the proposed/requested spec
 
 ### ⚠️ DO NOT USE THIS IN PRODUCTION, THE CRYPTOGRAPHIC KEYS ARE STORED IN CLEARTEXT
 
+## ⚠️ This does not yet implement Pin/ Biometric verification 
+
 For visual outputs, connect an LED to `GPIO 16`.
+
+A push button or touch sensor should be connected across `GPIO 26` and `GND` for the UP verification.
 
 Install Raspberry Pi OS Lite on the Raspberry Pi. (Lite is preferred for faster boot time).
 
