@@ -236,7 +236,7 @@ def sign_challenge_mldsa(pvtkey, challenge, algo):
 ############################### Authenticator API #############################
 
 
-aaguid_str='4d41190c-7beb-4a84-8018-adf265a6352d'
+aaguid_str='00000000-0000-0000-0000-000000000000'
 
 
 def authenticatorGetInfo():
