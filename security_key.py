@@ -51,12 +51,8 @@ print('Keys loaded')
 
 def get_algo(pubkeycredparams):
     for param in pubkeycredparams:
-        if param['alg'] ==-48:
+        if param['alg'] in [-48, -49, -7]:
             return param['alg']
-    for param in pubkeycredparams:
-        if param['alg'] ==-49:
-            return param['alg']
-            
     return -7
 
 def to_cose_key(pvtkey, pubkey, algo):
