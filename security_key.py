@@ -2,7 +2,7 @@
 
 allow_prints=True
 allow_benchmarking=False  #Dont allow printing while benchmarking
-debug_mode=True #Use button
+debug_mode=False #Use button
 
 ############################### Benchmarking #################################
 from datetime import datetime
