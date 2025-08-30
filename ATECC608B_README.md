@@ -1,21 +1,28 @@
 # ATECC608B Secure Element Integration
 
-This document describes the integration of the ATECC608B secure cryptographic element with the FIDO2 PQC Security Key.
+This document describes the integration of the ATECC608B secure cryptographic element with the FIDO2 PQC Security Key using Microchip's CryptoAuthLib.
 
 ## Overview
 
 The ATECC608B is a cryptographic co-processor that provides:
 - Hardware-based key generation and storage
-- Secure cryptographic operations
+- Secure cryptographic operations (ECC P-256)
 - Hardware random number generation
 - Tamper-resistant key storage
+
+## Dependencies
+
+This implementation uses Microchip's official CryptoAuthLib library:
+- **CryptoAuthLib**: Official C library for ATECC devices
+- **Python wrapper**: Python bindings for CryptoAuthLib
+- **I2C interface**: Hardware communication via Raspberry Pi I2C
 
 ## Hardware Setup
 
 ### Wiring (I2C)
 Connect the ATECC608B to your Raspberry Pi:
 - VCC → 3.3V
-- GND → Ground
+- GND → Ground  
 - SDA → GPIO 2 (Pin 3)
 - SCL → GPIO 3 (Pin 5)
 
@@ -24,22 +31,49 @@ Default I2C address: `0x60`
 
 ## Software Setup
 
-1. Run the setup script:
+1. Run the automated setup script:
 ```bash
 chmod +x setup_atecc608b.sh
 ./setup_atecc608b.sh
 ```
+
+This script will:
+- Install required packages (cmake, build tools, etc.)
+- Clone and compile CryptoAuthLib from source
+- Install Python CryptoAuthLib bindings
+- Configure I2C interface
+- Set up proper permissions
 
 2. Reboot the system:
 ```bash
 sudo reboot
 ```
 
-3. Test the connection:
+3. Verify installation:
 ```bash
+# Check I2C detection
 i2cdetect -y 1
+
+# Test ATECC608B connection
 python3 test_atecc608b.py
 ```
+
+## CryptoAuthLib Integration
+
+### Library Features Used
+- `atcab_init()`: Initialize device connection
+- `atcab_genkey()`: Generate ECC P-256 key pairs
+- `atcab_sign()`: Create ECDSA signatures
+- `atcab_random()`: Generate hardware random numbers
+- `atcab_read_serial_number()`: Get device serial
+- `atcab_write_zone()` / `atcab_read_zone()`: Data storage
+
+### Fallback Mode
+If CryptoAuthLib is not available:
+- System automatically falls back to software simulation
+- Uses Python's random module for testing
+- All operations return simulated data
+- Maintains API compatibility
 
 ## Integration Features
 

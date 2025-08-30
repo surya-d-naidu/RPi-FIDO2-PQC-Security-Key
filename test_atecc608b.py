@@ -2,10 +2,14 @@
 
 import sys
 import time
+import atecc608b
 from atecc608b import get_secure_storage_instance
 
 def test_atecc608b():
     print("Testing ATECC608B connection...")
+    
+    if not atecc608b.CRYPTOAUTHLIB_AVAILABLE:
+        print("⚠️  CryptoAuthLib not available - running in simulation mode")
     
     storage = get_secure_storage_instance()
     if not storage:
