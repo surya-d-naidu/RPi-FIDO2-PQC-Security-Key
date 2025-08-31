@@ -5,8 +5,8 @@ import time
 import struct
 import hashlib
 
-class R503Fingerprint:
-    def __init__(self, port='/dev/ttyUSB0', baudrate=57600, address=0xFFFFFFFF):
+class FingerprintSensorBase:
+    def __init__(self, port='/dev/ttyS0', baudrate=57600, address=0xFFFFFFFF):
         self.port = port
         self.baudrate = baudrate
         self.address = address
@@ -16,6 +16,7 @@ class R503Fingerprint:
     def connect(self):
         try:
             self.serial = serial.Serial(self.port, self.baudrate, timeout=2)
+            time.sleep(0.1)
             return True
         except:
             return False
@@ -45,17 +46,20 @@ class R503Fingerprint:
         if not self.serial:
             return None
             
-        header = self.serial.read(2)
-        if len(header) != 2 or struct.unpack('>H', header)[0] != self.packet_header:
-            return None
+        try:
+            header = self.serial.read(2)
+            if len(header) != 2 or struct.unpack('>H', header)[0] != self.packet_header:
+                return None
+                
+            address = self.serial.read(4)
+            packet_type = self.serial.read(1)
+            length = struct.unpack('>H', self.serial.read(2))[0]
+            data = self.serial.read(length - 2)
+            checksum = self.serial.read(2)
             
-        address = self.serial.read(4)
-        packet_type = self.serial.read(1)
-        length = struct.unpack('>H', self.serial.read(2))[0]
-        data = self.serial.read(length - 2)
-        checksum = self.serial.read(2)
-        
-        return data
+            return data
+        except:
+            return None
         
     def verify_password(self, password=0x00000000):
         data = struct.pack('>I', password)
@@ -74,39 +78,6 @@ class R503Fingerprint:
     def create_template(self):
         response = self._send_packet(0x01, b'\x05')
         return response and response[0] == 0x00
-        
-    def store_template(self, location, buffer_id=1):
-        data = struct.pack('>BB', buffer_id, location)
-        response = self._send_packet(0x01, b'\x06' + data)
-        return response and response[0] == 0x00
-        
-    def load_template(self, location, buffer_id=1):
-        data = struct.pack('>BB', buffer_id, location)
-        response = self._send_packet(0x01, b'\x07' + data)
-        return response and response[0] == 0x00
-        
-    def delete_template(self, location, count=1):
-        data = struct.pack('>BB', location, count)
-        response = self._send_packet(0x01, b'\x0C' + data)
-        return response and response[0] == 0x00
-        
-    def empty_database(self):
-        response = self._send_packet(0x01, b'\x0D')
-        return response and response[0] == 0x00
-        
-    def search_template(self, buffer_id=1, start_page=0, page_num=300):
-        data = struct.pack('>BBB', buffer_id, start_page, page_num)
-        response = self._send_packet(0x01, b'\x04' + data)
-        if response and response[0] == 0x00:
-            return True, struct.unpack('>HH', response[1:5])
-        return False, None
-        
-    def fast_search(self, buffer_id=1, start_page=0, page_num=300):
-        data = struct.pack('>BBB', buffer_id, start_page, page_num)
-        response = self._send_packet(0x01, b'\x1B' + data)
-        if response and response[0] == 0x00:
-            return True, struct.unpack('>HH', response[1:5])
-        return False, None
         
     def match_template(self):
         response = self._send_packet(0x01, b'\x03')
@@ -140,11 +111,95 @@ class R503Fingerprint:
         data = struct.pack('>BBBB', control_code, speed, color_index, cycle_count)
         response = self._send_packet(0x01, b'\x35' + data)
         return response and response[0] == 0x00
+        
+    def empty_database(self):
+        response = self._send_packet(0x01, b'\x0D')
+        return response and response[0] == 0x00
+
+class R502Fingerprint(FingerprintSensorBase):
+    def store_template(self, location, buffer_id=1):
+        data = struct.pack('>HB', location, buffer_id)
+        response = self._send_packet(0x01, b'\x06' + data)
+        return response and response[0] == 0x00
+        
+    def load_template(self, location, buffer_id=1):
+        data = struct.pack('>HB', location, buffer_id)
+        response = self._send_packet(0x01, b'\x07' + data)
+        return response and response[0] == 0x00
+        
+    def delete_template(self, location, count=1):
+        data = struct.pack('>HH', location, count)
+        response = self._send_packet(0x01, b'\x0C' + data)
+        return response and response[0] == 0x00
+        
+    def search_template(self, buffer_id=1, start_page=0, page_num=162):
+        data = struct.pack('>BHH', buffer_id, start_page, page_num)
+        response = self._send_packet(0x01, b'\x04' + data)
+        if response and response[0] == 0x00:
+            return True, struct.unpack('>HH', response[1:5])
+        return False, None
+        
+    def fast_search(self, buffer_id=1, start_page=0, page_num=162):
+        data = struct.pack('>BHH', buffer_id, start_page, page_num)
+        response = self._send_packet(0x01, b'\x1B' + data)
+        if response and response[0] == 0x00:
+            return True, struct.unpack('>HH', response[1:5])
+        return False, None
+
+class R503Fingerprint(R502Fingerprint):
+    def __init__(self, port='/dev/ttyS0', baudrate=57600, address=0xFFFFFFFF):
+        super().__init__(port, baudrate, address)
+        
+    def store_template(self, location, buffer_id=1):
+        data = struct.pack('>BB', buffer_id, location)
+        response = self._send_packet(0x01, b'\x06' + data)
+        return response and response[0] == 0x00
+        
+    def load_template(self, location, buffer_id=1):
+        data = struct.pack('>BB', buffer_id, location)
+        response = self._send_packet(0x01, b'\x07' + data)
+        return response and response[0] == 0x00
+        
+    def delete_template(self, location, count=1):
+        data = struct.pack('>BB', location, count)
+        response = self._send_packet(0x01, b'\x0C' + data)
+        return response and response[0] == 0x00
+        
+    def search_template(self, buffer_id=1, start_page=0, page_num=300):
+        data = struct.pack('>BBB', buffer_id, start_page, page_num)
+        response = self._send_packet(0x01, b'\x04' + data)
+        if response and response[0] == 0x00:
+            return True, struct.unpack('>HH', response[1:5])
+        return False, None
+        
+    def fast_search(self, buffer_id=1, start_page=0, page_num=300):
+        data = struct.pack('>BBB', buffer_id, start_page, page_num)
+        response = self._send_packet(0x01, b'\x1B' + data)
+        if response and response[0] == 0x00:
+            return True, struct.unpack('>HH', response[1:5])
+        return False, None
 
 class FingerprintAuth:
-    def __init__(self, sensor_port='/dev/ttyUSB0'):
-        self.sensor = R503Fingerprint(sensor_port)
-        self.max_templates = 300
+    def __init__(self, sensor_port='/dev/ttyS0', led_pin=18, sensor_type='R502'):
+        self.sensor_port = sensor_port
+        self.led_pin = led_pin
+        self.sensor_type = sensor_type
+        
+        if sensor_type.upper() == 'R503':
+            self.sensor = R503Fingerprint(sensor_port)
+        else:
+            self.sensor = R502Fingerprint(sensor_port)
+        self.user_templates = {}
+        self.user_file = 'fingerprint_users.txt'
+        self.load_user_mappings()
+        
+        try:
+            import RPi.GPIO as GPIO
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(led_pin, GPIO.OUT)
+            self.gpio_available = True
+        except:
+            self.gpio_available = False
         
     def initialize(self):
         if not self.sensor.connect():
