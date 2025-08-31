@@ -191,6 +191,7 @@ class FingerprintAuth:
             self.sensor = R502Fingerprint(sensor_port)
         self.user_templates = {}
         self.user_file = 'fingerprint_users.txt'
+        self.max_templates = 162 if sensor_type.upper() == 'R502' else 300
         self.load_user_mappings()
         
         try:
@@ -200,6 +201,32 @@ class FingerprintAuth:
             self.gpio_available = True
         except:
             self.gpio_available = False
+    
+    def load_user_mappings(self):
+        try:
+            with open(self.user_file, 'r') as f:
+                for line in f:
+                    parts = line.strip().split(':')
+                    if len(parts) == 2:
+                        user_id, location = parts
+                        self.user_templates[int(user_id)] = int(location)
+        except:
+            pass
+    
+    def save_user_mappings(self):
+        try:
+            with open(self.user_file, 'w') as f:
+                for user_id, location in self.user_templates.items():
+                    f.write(f"{user_id}:{location}\n")
+        except:
+            pass
+    
+    def get_next_location(self):
+        used_locations = set(self.user_templates.values())
+        for i in range(self.max_templates):
+            if i not in used_locations:
+                return i
+        return None
         
     def initialize(self):
         if not self.sensor.connect():
@@ -210,7 +237,9 @@ class FingerprintAuth:
         if not self.initialize():
             return False
             
-        location = user_id % self.max_templates
+        location = self.get_next_location()
+        if location is None:
+            return False
         
         self.sensor.led_control(1, 0x80, 1, 0)
         
@@ -233,7 +262,9 @@ class FingerprintAuth:
             
         if not self.sensor.store_template(location, 1):
             return False
-            
+        
+        self.user_templates[user_id] = location
+        self.save_user_mappings()
         self.sensor.led_control(6, 0x80, 1, 3)
         return True
         
@@ -249,8 +280,8 @@ class FingerprintAuth:
         if not self.sensor.image_to_template(1):
             return False
             
-        if user_id is not None:
-            location = user_id % self.max_templates
+        if user_id is not None and user_id in self.user_templates:
+            location = self.user_templates[user_id]
             if not self.sensor.load_template(location, 2):
                 return False
             success, score = self.sensor.match_template()
@@ -271,14 +302,25 @@ class FingerprintAuth:
     def delete_fingerprint(self, user_id):
         if not self.initialize():
             return False
+        
+        if user_id not in self.user_templates:
+            return False
             
-        location = user_id % self.max_templates
-        return self.sensor.delete_template(location)
+        location = self.user_templates[user_id]
+        success = self.sensor.delete_template(location)
+        if success:
+            del self.user_templates[user_id]
+            self.save_user_mappings()
+        return success
         
     def clear_all_fingerprints(self):
         if not self.initialize():
             return False
-        return self.sensor.empty_database()
+        success = self.sensor.empty_database()
+        if success:
+            self.user_templates.clear()
+            self.save_user_mappings()
+        return success
         
     def get_enrolled_count(self):
         if not self.initialize():
@@ -313,8 +355,12 @@ def get_fingerprint_template_hash(user_id):
     try:
         if not fp_auth.initialize():
             return None
+        
+        if user_id not in fp_auth.user_templates:
+            fp_auth.cleanup()
+            return None
             
-        location = user_id % fp_auth.max_templates
+        location = fp_auth.user_templates[user_id]
         if fp_auth.sensor.load_template(location, 1):
             template_data = b"template_" + str(user_id).encode()
             template_hash = hashlib.sha256(template_data).digest()
